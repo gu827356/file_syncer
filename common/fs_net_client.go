@@ -24,6 +24,7 @@ func IsDirOrNotExist(path string) (bool, error) {
 }
 
 func NewFSProxy(root string) (*FSProxy, error) {
+	root = strings.ReplaceAll(root, `\`, "/")
 	for ; strings.HasSuffix(root, "/"); {
 		root = root[0 : len(root)-1]
 	}
@@ -53,8 +54,9 @@ func (p *FSProxy) GetAllPathEntries() ([]PathEntry, error) {
 			return err
 		}
 
+		path = strings.ReplaceAll(path, `\`, "/")
 		if strings.HasPrefix(path, p.root) {
-			path = path[len(p.root)+1:]
+			path = path[len(p.root):]
 		}
 
 		result = append(result, PathEntry{
