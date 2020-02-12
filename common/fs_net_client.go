@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 type FSProxy struct {
@@ -40,6 +41,10 @@ func NewFSProxy(root string) (*FSProxy, error) {
 
 func (p *FSProxy) GetAllPathEntries() ([]PathEntry, error) {
 	result := make([]PathEntry, 0)
+
+	lock := sync.Mutex{}
+	latch := sync.WaitGroup{}
+
 	err := filepath.Walk(p.root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -49,23 +54,33 @@ func (p *FSProxy) GetAllPathEntries() ([]PathEntry, error) {
 			return nil
 		}
 
-		md5, err := FileMD5(path)
-		if err != nil {
-			return err
-		}
+		latch.Add(1)
+		lastModifiedTime := info.ModTime().Unix()
+		go func() {
+			md5, err := FileMD5(path)
+			if err != nil {
+				fmt.Printf("fail to calculate files[%s]'s md5: %v\n", path, err)
+			}
 
-		path = strings.ReplaceAll(path, `\`, "/")
-		if strings.HasPrefix(path, p.root) {
-			path = path[len(p.root):]
-		}
+			path = strings.ReplaceAll(path, `\`, "/")
+			if strings.HasPrefix(path, p.root) {
+				path = path[len(p.root):]
+			}
 
-		result = append(result, PathEntry{
-			Path:             path,
-			MD5:              md5,
-			LastModifiedTime: info.ModTime().Unix(),
-		})
+			lock.Lock()
+			result = append(result, PathEntry{
+				Path:             path,
+				MD5:              md5,
+				LastModifiedTime: lastModifiedTime,
+			})
+			lock.Unlock()
+			latch.Done()
+		}()
+
 		return nil
 	})
+
+	latch.Wait()
 
 	return result, err
 }
