@@ -33,7 +33,7 @@ func ReadPkg(in io.Reader) (Pkg, error) {
 		return nil, err
 	}
 	if count != 4 {
-		return nil, fmt.Errorf("pkg format error")
+		return nil, fmt.Errorf("pkg format error, no date length")
 	}
 
 	size := binary.BigEndian.Uint32(lenData[:])
@@ -43,12 +43,12 @@ func ReadPkg(in io.Reader) (Pkg, error) {
 	}
 
 	data := make([]byte, int(size))
-	count, err = in.Read(data)
+	count, err = io.ReadFull(in, data)
 	if err != nil {
 		return nil, err
 	}
 	if count != len(data) {
-		return nil, fmt.Errorf("pkg form error")
+		return nil, fmt.Errorf("pkg form error, there are not enough data[expected=%d, actual=%d]", len(data), count)
 	}
 	return data, nil
 }

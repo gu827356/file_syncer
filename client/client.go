@@ -169,17 +169,17 @@ func (c *SyncClient) syncFile(entry *common.PathEntry) error {
 	if err != nil {
 		return err
 	}
-	tmpFilePath := os.TempDir() + "/" + id.String()
+	tmpFilePath := c.pathOf(entry) + "_" + id.String()
 	file, err := os.Create(tmpFilePath)
 	if err != nil {
 		return fmt.Errorf("fail to create temporary file[%s]: %v", tmpFilePath, err)
 	}
 	defer func() {
-		file.Close()
 		os.Remove(tmpFilePath)
 	}()
 
 	err = c.netClient.DownloadEntry(entry, file)
+	file.Close()
 	if err != nil {
 		return fmt.Errorf("fail to download %s", entry)
 	}
